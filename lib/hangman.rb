@@ -3,7 +3,6 @@ class Game
 	def initialize
 		@word_maker = Word.new
 		@board = Board.new()
-		@computer = Computer.new()
 		@player = Player.new()
 	end
 
@@ -15,6 +14,7 @@ class Game
 
 		while (!game_over?)
 			# ask to save game?
+			save?()
 			@player.guess_word()
 			@board.draw(@player, @word)
 		end
@@ -100,10 +100,13 @@ class Game
 	def new_game()
 		@word_maker = Word.new
 		@board = Board.new()
-		@computer = Computer.new()
 		@player = Player.new()
 
 		start()
+	end
+
+	def save?
+		puts ""
 	end
 
 	def save_game
