@@ -151,7 +151,7 @@ class Game
 	def save_game
 		Dir.mkdir("saved") unless Dir.exists? "saved"
 		date = Time.new
-		filename = "saved/game_#{date}.json".gsub(" ", "_") #save the game object as json/xml with id
+		filename = "saved/game_#{date}.json".gsub(" ", "_") #save the game object as json using date as uniq id
 		
 		File.open(filename, 'w') do |file|
 			file.puts self.serialize #game object serialization
