@@ -1,19 +1,25 @@
+require 'json'
+
 class Game
-	@@id = 0
+	@@serializer = JSON
 
 	def initialize
 		@word_maker = Word.new
 		@board = Board.new()
 		@player = Player.new()
-		@@id += 1
 	end
 
 	def start
 		print_instructions()
 		new_or_save()
 		set_word()
+
 		@board.display_word(@player, @word)
 
+		play()
+	end
+
+	def play()
 		while (!game_over?)
 			save_or_guess()
 			@board.draw(@player, @word)
@@ -74,6 +80,7 @@ class Game
 		if (response.downcase.strip == "y" || response.downcase.strip == "yes")
 			return true
 		else
+			exit
 			return false
 		end
 	end
@@ -89,7 +96,9 @@ class Game
 		response = gets.chomp
 		if (response.strip == "1" || response.downcase.strip == "new game")
 		elsif (response.strip == "2" || response.downcase.strip == "saved game")
-			load_game()
+			choose_saved_game()
+			@board.draw(@player, @word)
+			play()
 		elsif (response.strip != "1" || response.downcase.strip != "new game")
 			new_or_save()
 		end
@@ -114,32 +123,85 @@ class Game
 		end
 	end
 
+	def serialize
+		obj = {}
+		obj['@word_maker'] = @word_maker.serialize
+		obj['@board'] = @board.serialize
+		obj['@player'] = @player.serialize
+	
+		@@serializer.dump obj
+	end
+
+	def unserialize(file)
+		obj = @@serializer.load(file)
+
+		@word_maker = Word.new
+		@word_maker.unserialize(obj['@word_maker'])
+
+		@board = Board.new
+		@board.unserialize(obj['@board'])
+	
+		@player = Player.new
+		@player.unserialize(obj['@player'])	
+
+		@word = @word_maker.code
+	end
+
 	#use serialization to save game state
 	def save_game
 		Dir.mkdir("saved") unless Dir.exists? "saved"
-		filename = "saved/game_#{@@id}.json" #save the game object as json/xml with id
+		date = Time.new
+		filename = "saved/game_#{date}.json".gsub(" ", "_") #save the game object as json/xml with id
 		
 		File.open(filename, 'w') do |file|
-			file.puts #game object serialization
+			file.puts self.serialize #game object serialization
 		end
 	end
 
 	#method to pick saved game file to open (asks user for filename)
 	def choose_saved_game()
 		puts "Pick a saved game to load: "
-		#print out entries in the directory
 
-		filename = gets.chomp
-		#load_game(file) if file_valid
+		if Dir["saved/*"].length == 0
+			puts "Sorry there are no saved games"
+			set_word()
+			@board.display_word(@player, @word)
+
+			play()
+		else
+			#print out entries in the directory
+			Dir["saved/*"].each_with_index do |file, index|
+				puts "#{index}: #{file.gsub(".json", "").gsub("saved/", "")}"
+			end
+		
+			filename = gets.chomp
+			load_game(Dir["saved/*"][filename.to_i]) if filename_valid(filename)
+		end
+	end
+
+	def filename_valid(file)
+		size = Dir["saved/*"].length
+		filename = file.downcase.strip
+		if filename.to_i < size && filename.to_i > 0 
+			return true
+		elsif filename == "0"
+			return true
+		else
+			choose_saved_game()
+			return false
+		end
 	end
 
 	#use serialization to open up saved game
 	def load_game(filename)
-
+		File.open(filename, 'r') do |file|
+			self.unserialize(file)
+		end
 	end
 
 	class Word
 		attr_accessor :code
+		@@serializer = JSON
 
 		def initialize
 		end
@@ -157,11 +219,28 @@ class Game
 				return false
 			end
 		end
+	 	
+	 	def serialize
+  	  obj = {}
+    	instance_variables.map do |var|
+     	 obj[var] = instance_variable_get(var)
+    	end
+
+    	@@serializer.dump obj
+  	end
+  	
+  	def unserialize(string)
+    	obj = @@serializer.parse(string)
+    	obj.keys.each do |key|
+      	instance_variable_set(key, obj[key])
+    	end
+  	end
 
 	end
 
 	class Board
 		attr_accessor :number_of_chances, :game_word
+		@@serializer = JSON
 
 		def initialize
 			@number_of_chances = 6
@@ -212,10 +291,26 @@ class Game
 			puts @incorrect_guesses.inspect
 		end
 
+		def serialize
+  	  obj = {}
+    	instance_variables.map do |var|
+     	 obj[var] = instance_variable_get(var)
+    	end
+
+    	@@serializer.dump obj
+  	end
+  	
+  	def unserialize(string)
+    	obj = @@serializer.parse(string)
+    	obj.keys.each do |key|
+      	instance_variable_set(key, obj[key])
+    	end
+  	end
 	end
 
 	class Player
 		attr_accessor :guesses
+		@@serializer = JSON
 
 		def initialize()
 			@guesses = []
@@ -247,9 +342,21 @@ class Game
 			char =~ /[[:alpha:]]/
 		end
 
-	end
+		def serialize
+  	  obj = {}
+    	instance_variables.map do |var|
+     	 obj[var] = instance_variable_get(var)
+    	end
 
-	class Computer < Player
+    	@@serializer.dump obj
+  	end
+  	
+  	def unserialize(string)
+    	obj = @@serializer.parse(string)
+    	obj.keys.each do |key|
+      	instance_variable_set(key, obj[key])
+    	end
+  	end
 
 	end
 end
